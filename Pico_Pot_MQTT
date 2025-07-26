@@ -1,0 +1,53 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+
+// WiFi credentials
+const char* ssid = "Antonelli";
+const char* password = "maomao1206";
+
+// MQTT broker
+const char* mqtt_server = "broker.hivemq.com";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+// Analog pin
+const int potPin = 26;
+
+void setup_wifi() {
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) delay(500);
+  Serial.println("WiFi connected");
+}
+
+void setup() {
+  Serial.begin(115200);
+  setup_wifi();
+  client.setServer(mqtt_server, 1883);
+}
+
+void loop() {
+  if (!client.connected()) {
+    while (!client.connected()) {
+      if (client.connect("PicoPublisher")) {
+        Serial.println("MQTT connected");
+      } else {
+        delay(1000);
+      }
+    }
+  }
+
+  client.loop();
+
+  int analogValue = analogRead(potPin);  // 0-1023
+  int brightness = map(analogValue, 0, 1023, 0, 255);
+
+  char payload[4];
+  itoa(brightness, payload, 10);
+
+  client.publish("led/brightness", payload);
+  Serial.print("Sent brightness: ");
+  Serial.println(payload);
+
+  delay(300);
+}
